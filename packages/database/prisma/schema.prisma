@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  address     String
+  phone       String
+  email       String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  menuItems        MenuItem[]
+  orders           Order[]
+  billingConfig    BillingConfig?
+  pricingRules     PricingRule[]
+  taxRules         TaxRule[]
+  discountRules    DiscountRule[]
+  coupons          Coupon[]
+
+  @@index([slug])
+}
+
+model MenuItem {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  description  String?
+  basePrice    Float
+  category     String
+  isAvailable  Boolean  @default(true)
+  imageUrl     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  taxCategory String?     // e.g., "food", "beverage", "alcohol"
+  
+  @@index([restaurantId])
+  @@index([category])
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  restaurantId String
+  orderNumber  String      @unique
+  customerName String
+  customerEmail String?
+  customerPhone String?
+  status       OrderStatus @default(PENDING)
+  
+  // Billing breakdown
+  subtotal     Float
+  taxAmount    Float
+  discountAmount Float     @default(0)
+  totalAmount  Float
+  
+  // Applied rules
+  appliedPricingRules String[] // IDs of pricing rules
+  appliedTaxRules     String[] // IDs of tax rules
+  appliedDiscounts    String[] // IDs of discount rules
+  couponCode          String?
+  
+  billingDetails Json? // Store complete billing calculation details
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      OrderItem[]
+
+  @@index([restaurantId])
+  @@index([orderNumber])
+  @@index([status])
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  menuItemId String
+  quantity   Int
+  unitPrice  Float    // Price at time of order
+  totalPrice Float    // After pricing rules applied
+  taxAmount  Float
+  discountAmount Float @default(0)
+  
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@index([orderId])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+model BillingConfig {
+  id           String   @id @default(uuid())
+  restaurantId String   @unique
+  
+  // Default tax settings
+  defaultTaxRate Float   @default(0)
+  taxInclusive   Boolean @default(false)
+  
+  // Pricing strategy
+  pricingStrategy String @default("STANDARD") // STANDARD, DYNAMIC, TIME_BASED
+  
+  // Discount settings
+  allowCoupons      Boolean @default(true)
+  allowItemDiscounts Boolean @default(true)
+  maxDiscountPercent Float?  @default(100)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model PricingRule {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  priority     Int      @default(0) // Higher priority rules apply first
+  
+  // Rule type
+  type         PricingRuleType
+  
+  // Conditions (JSON)
+  conditions   Json // e.g., { "dayOfWeek": [1,2,3], "timeRange": "18:00-22:00", "categories": ["pizza"] }
+  
+  // Action (JSON)
+  action       Json // e.g., { "type": "PERCENTAGE", "value": 10 } or { "type": "FIXED_AMOUNT", "value": 5 }
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([isActive])
+}
+
+enum PricingRuleType {
+  MARKUP          // Increase price
+  MARKDOWN        // Decrease price
+  FIXED_PRICE     // Set specific price
+  HAPPY_HOUR      // Time-based pricing
+  BULK_DISCOUNT   // Quantity-based
+}
+
+model TaxRule {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  priority     Int      @default(0)
+  
+  // Tax rate
+  rate         Float    // Percentage
+  
+  // Application type
+  applicationType TaxApplicationType @default(PERCENTAGE)
+  
+  // Conditions (JSON)
+  conditions   Json // e.g., { "categories": ["alcohol"], "minAmount": 10 }
+  
+  // Compound tax (for complex tax calculations)
+  isCompound   Boolean  @default(false) // Apply after other taxes
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([isActive])
+}
+
+enum TaxApplicationType {
+  PERCENTAGE      // Standard percentage tax
+  FIXED_AMOUNT    // Fixed amount per item
+  TIERED          // Different rates for different amounts
+}
+
+model DiscountRule {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  priority     Int      @default(0)
+  
+  // Discount type
+  type         DiscountType
+  
+  // Value
+  value        Float    // Percentage or fixed amount
+  maxDiscount  Float?   // Maximum discount amount (for percentage)
+  
+  // Conditions (JSON)
+  conditions   Json // e.g., { "minOrderAmount": 50, "categories": ["pizza"], "minQuantity": 2 }
+  
+  // Usage limits
+  usageLimit   Int?     // Total usage limit
+  usageCount   Int      @default(0)
+  
+  // Date range
+  startDate    DateTime?
+  endDate      DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([isActive])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  BUY_X_GET_Y
+  BUNDLE
+}
+
+model Coupon {
+  id           String   @id @default(uuid())
+  restaurantId String
+  code         String
+  description  String?
+  isActive     Boolean  @default(true)
+  
+  // Discount details
+  discountType DiscountType
+  discountValue Float
+  maxDiscount  Float?
+  
+  // Conditions (JSON)
+  conditions   Json // e.g., { "minOrderAmount": 30, "firstOrderOnly": true }
+  
+  // Usage limits
+  usageLimit   Int?     // Total usage limit
+  usageCount   Int      @default(0)
+  perUserLimit Int?     // Per user limit
+  
+  // Date range
+  startDate    DateTime?
+  endDate      DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, code])
+  @@index([restaurantId])
+  @@index([code])
+  @@index([isActive])
+}

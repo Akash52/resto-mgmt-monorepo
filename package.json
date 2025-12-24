@@ -1,0 +1,44 @@
+{
+  "name": "turborepo-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-ready monorepo with Turborepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:client": "turbo run dev --filter=@demo/web",
+    "dev:dashboard": "turbo run dev --filter=@demo/dashboard",
+    "dev:api": "turbo run dev --filter=@demo/api",
+    "build": "turbo run build",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "db:generate": "cd packages/database && pnpm db:generate",
+    "db:push": "cd packages/database && pnpm db:push",
+    "db:migrate": "cd packages/database && pnpm db:migrate",
+    "db:studio": "cd packages/database && pnpm db:studio",
+    "db:seed": "cd packages/database && pnpm db:seed",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@demo/eslint-config": "workspace:*",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
+    "eslint": "^8.57.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.10.0"
+}
