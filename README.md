@@ -143,8 +143,6 @@ For complete setup instructions, architecture details, and development guides, s
 ## 📚 Documentation
 
 - [Complete Guide](docs/COMPLETE_PROJECT_GUIDE.md) - Full documentation
-- [Monorepo Verification](docs/MONOREPO_VERIFICATION.md) - Best practices analysis
-- [Monorepo Guide](mono-guide.md) - Real-world patterns and lessons
 
 ---
 
