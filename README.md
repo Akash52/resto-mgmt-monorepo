@@ -117,13 +117,6 @@ All frontend apps (web and dashboard) are configured with API proxy:
 - Web app (port 5173) → API (port 3001)
 - Dashboard (port 3002) → API (port 3001)
 - No CORS configuration needed in development
-
-## Documentation
-
-For complete setup instructions, architecture details, and development guides, see:
-
-- [COMPLETE_PROJECT_GUIDE.md](docs/COMPLETE_PROJECT_GUIDE.md) - Comprehensive developer documentation
-
 ---
 
 **Built with Turborepo, React, Express, Prisma, and TypeScript**
